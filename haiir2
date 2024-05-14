@@ -1,0 +1,197 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+
+// Database connection details (consider moving this to a separate configuration file)
+class DBConfig {
+    public static final String URL = "jdbc:mysql://localhost:3306/lop_hoc";
+    public static final String USER = "root";
+    public static final String PASSWORD = "password"; // Replace with your actual password
+}
+
+// Class for JDBC connectivity
+class DatabaseConnection {
+    private static Connection connection;
+
+    public static Connection getConnection() throws SQLException {
+        if (connection == null) {
+            connection = DriverManager.getConnection(DBConfig.URL, DBConfig.USER, DBConfig.PASSWORD);
+        }
+        return connection;
+    }
+}
+
+// Class for CRUD operations
+class ClassManager {
+    public void addClass(String maLop, String tenLop, String khoa, String nguoiTao) throws SQLException {
+        String sql = "INSERT INTO lop (ma_lop, ten_lop, khoa, nguoi_tao) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, maLop);
+            stmt.setString(2, tenLop);
+            stmt.setString(3, khoa);
+            stmt.setString(4, nguoiTao);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void updateClass(String maLop, String tenLop, String khoa) throws SQLException {
+        String sql = "UPDATE lop SET ten_lop = ?, khoa = ? WHERE ma_lop = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, tenLop);
+            stmt.setString(2, khoa);
+            stmt.setString(3, maLop);
+            stmt.executeUpdate();
+        }
+    }
+
+    public void deleteClass(String maLop) throws SQLException {
+        String sql = "DELETE FROM lop WHERE ma_lop = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, maLop);
+            stmt.executeUpdate();
+        }
+    }
+
+    public DefaultTableModel getClassData() throws SQLException {
+        String sql = "SELECT * FROM lop";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            DefaultTableModel tableModel = new DefaultTableModel();
+
+            for (int i = 1; i <= columnCount; i++) {
+                tableModel.addColumn(metaData.getColumnName(i));
+            }
+
+            while (rs.next()) {
+                Object[] rowData = new Object[columnCount];
+                for (int i = 1; i <= columnCount; i++) {
+                    rowData[i - 1] = rs.getObject(i);
+                }
+                tableModel.addRow(rowData);
+            }
+
+            return tableModel;
+        }
+    }
+}
+
+// Login Form
+class LoginForm extends JFrame implements ActionListener {
+    // ... (unchanged from your original code) 
+}
+
+// Class Management Form
+class ClassManagementForm extends JFrame implements ActionListener {
+    JTextField maLopField, tenLopField, khoaField;
+    JButton addButton, updateButton, deleteButton, refreshButton, logoutButton;
+    JTable classTable;
+    DefaultTableModel tableModel;
+    ClassManager classManager;
+
+    ClassManagementForm() {
+        // ... (unchanged from your original code)
+
+        addButton = new JButton("Thêm");
+        addButton.addActionListener(this);
+        updateButton = new JButton("Sửa");
+        updateButton.addActionListener(this);
+        deleteButton = new JButton("Xóa");
+        deleteButton.addActionListener(this);
+        refreshButton = new JButton("Làm mới");
+        refreshButton.addActionListener(this);
+        logoutButton = new JButton("Đăng Xuất");
+        logoutButton.addActionListener(this);
+
+        classTable = new JTable();
+        tableModel = new DefaultTableModel();
+        classTable.setModel(tableModel);
+        JScrollPane scrollPane = new JScrollPane(classTable);
+
+        add(maLopLabel);
+        add(maLopField);
+        add(tenLopLabel);
+        add(tenLopField);
+        add(khoaLabel);
+        add(khoaField);
+        add(addButton);
+        add(updateButton);
+        add(deleteButton);
+        add(refreshButton);
+        add(logoutButton);
+        add(scrollPane); // Add table to the UI
+
+        classManager = new ClassManager();
+
+        loadClassData(); // Load data when the form starts
+
+        setVisible(true);
+    }
+
+    private void loadClassData() {
+        try {
+            tableModel = classManager.getClassData();
+            classTable.setModel(tableModel);
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error loading class data: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == addButton) {
+            // ... (similar to your original code, use addClass method)
+        } else if (e.getSource() == updateButton) {
+            String maLop = maLopField.getText();
+            String tenLop = tenLopField.getText();
+            String khoa = khoaField.getText();
+
+            if (maLop.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter Mã Lớp to update.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                classManager.updateClass(maLop, tenLop, khoa);
+                loadClassData(); // Refresh table data
+                JOptionPane.showMessageDialog(this, "Class updated successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Error updating class: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+
+        } else if (e.getSource() == deleteButton) {
+            String maLop = maLopField.getText();
+
+            if (maLop.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter Mã Lớp to delete.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                classManager.deleteClass(maLop);
+                loadClassData(); // Refresh table data
+                JOptionPane.showMessageDialog(this, "Class deleted successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Error deleting class: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (e.getSource() == refreshButton) {
+            loadClassData();
+        } else if (e.getSource() == logoutButton) {
+            // ... (unchanged from your original code)
+        }
+    }
+}
+
+// ... (Main class remains the same) 
+public class Main {
+    public static void main(String[] args) {
+        new LoginForm();
+    }
