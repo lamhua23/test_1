@@ -1,0 +1,179 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.sql.*;
+import javax.swing.*;
+
+// Class for JDBC connectivity
+class DatabaseConnection {
+    private static Connection connection;
+
+    public static Connection getConnection() throws SQLException {
+        if (connection == null) {
+            String url = "jdbc:mysql://localhost:3306/lop_hoc";
+            String username = "root";
+            String password = "password"; // Replace with your actual password
+
+            connection = DriverManager.getConnection(url, username, password);
+        }
+        return connection;
+    }
+}
+
+// Class for CRUD operations
+class ClassManager {
+    public void addClass(String maLop, String tenLop, String khoa, String nguoiTao) throws SQLException {
+        String sql = "INSERT INTO lop (ma_lop, ten_lop, khoa, nguoi_tao) VALUES (?, ?, ?, ?)";
+        Connection conn = DatabaseConnection.getConnection();
+        PreparedStatement stmt = conn.prepareStatement(sql);
+        stmt.setString(1, maLop);
+        stmt.setString(2, tenLop);
+        stmt.setString(3, khoa);
+        stmt.setString(4, nguoiTao);
+        stmt.executeUpdate();
+    }
+
+    // Add more methods for read, update, and delete operations
+    // ...
+}
+
+// Login Form
+class LoginForm extends JFrame implements ActionListener {
+    JTextField emailField;
+    JPasswordField passwordField;
+    JButton loginButton;
+
+    LoginForm() {
+        setTitle("Login");
+        setSize(300, 200);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new GridLayout(3, 2));
+
+        JLabel emailLabel = new JLabel("Email:");
+        JLabel passwordLabel = new JLabel("Password:");
+        emailField = new JTextField();
+        passwordField = new JPasswordField();
+        loginButton = new JButton("Login");
+        loginButton.addActionListener(this);
+
+        add(emailLabel);
+        add(emailField);
+        add(passwordLabel);
+        add(passwordField);
+        add(new JLabel());
+        add(loginButton);
+
+        setVisible(true);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        String email = emailField.getText();
+        String password = new String(passwordField.getPassword());
+
+        // Check if email and password are entered
+        if (email.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter email and password.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Check email format
+        if (!email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$")) {
+            JOptionPane.showMessageDialog(this, "Invalid email format.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Check if email matches the pattern "minhnv@huce.edu.vn" and password matches student ID
+        String studentName = email.substring(0, email.indexOf('@'));
+        String expectedPassword = studentName.substring(studentName.length() - 5);
+
+        if (email.endsWith("@huce.edu.vn") && password.equals(expectedPassword)) {
+            // Open class management form
+            new ClassManagementForm();
+            dispose(); // Close the login form
+        } else {
+            JOptionPane.showMessageDialog(this, "Invalid email or password.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+}
+
+// Class Management Form
+class ClassManagementForm extends JFrame implements ActionListener {
+    JTextField maLopField, tenLopField, khoaField;
+    JButton saveButton, resetButton, logoutButton;
+    ClassManager classManager;
+
+    ClassManagementForm() {
+        setTitle("Class Management");
+        setSize(400, 300);
+        setLocationRelativeTo(null);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new GridLayout(4, 2));
+
+        JLabel maLopLabel = new JLabel("Mã Lớp:");
+        JLabel tenLopLabel = new JLabel("Tên Lớp:");
+        JLabel khoaLabel = new JLabel("Khoa:");
+        maLopField = new JTextField();
+        tenLopField = new JTextField();
+        khoaField = new JTextField();
+        saveButton = new JButton("Lưu");
+        saveButton.addActionListener(this);
+        resetButton = new JButton("Nhập Lại");
+        resetButton.addActionListener(this);
+        logoutButton = new JButton("Đăng Xuất");
+        logoutButton.addActionListener(this);
+
+        add(maLopLabel);
+        add(maLopField);
+        add(tenLopLabel);
+        add(tenLopField);
+        add(khoaLabel);
+        add(khoaField);
+        add(saveButton);
+        add(resetButton);
+        add(logoutButton);
+
+        classManager = new ClassManager();
+
+        setVisible(true);
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == saveButton) {
+            String maLop = maLopField.getText();
+            String tenLop = tenLopField.getText();
+            String khoa = khoaField.getText();
+            String nguoiTao = "minhnv@huce.edu.vn"; // Replace with the actual email
+
+            // Validate required fields
+            if (maLop.isEmpty() || tenLop.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter Mã Lớp and Tên Lớp.", "Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            try {
+                classManager.addClass(maLop, tenLop, khoa, nguoiTao);
+                JOptionPane.showMessageDialog(this, "Class added successfully.", "Success", JOptionPane.INFORMATION_MESSAGE);
+            } catch (SQLException ex) {
+                JOptionPane.showMessageDialog(this, "Error adding class: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (e.getSource() == resetButton) {
+            // Clear input fields
+            maLopField.setText("");
+            tenLopField.setText("");
+            khoaField.setText("");
+            maLopField.requestFocus();
+        } else if (e.getSource() == logoutButton) {
+            // Open login form and close the current form
+            new LoginForm();
+            dispose();
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        new LoginForm();
+    }
+}
